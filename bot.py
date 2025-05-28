@@ -25,17 +25,31 @@ REACTION_EMOJIS = [
 ]
 
 ACCOUNTS = [
-    {"session": "t26.session", "api_id": 24242797, "api_hash": "39c5cf71d815d5ec0b07f3291671b863"},
-    {"session": "t27.session", "api_id": 27731245, "api_hash": "cad2f72d1c0d1b6e90ec90d339bda5e6"},
-    {"session": "t28.session", "api_id": 20158764, "api_hash": "66ba8a8baee954716c15d0991f0fedf1"},
-    {"session": "t29.session", "api_id": 4565506,  "api_hash": "2c25ee573527aa2f7f43fa1a32d2f074"},
-    {"session": "t30.session", "api_id": 29356922, "api_hash": "dd1bbca313b4cc59e1f12be10068e0c6"},
-    {"session": "t31.session", "api_id": 3366952,  "api_hash": "6987311f94c86e0e6cdf52ca5c924f1a"},
-    {"session": "t32.session", "api_id": 27444429, "api_hash": "f055109f97ecac42e24017d2b5810f33"},
-    {"session": "t33.session", "api_id": 3116753,  "api_hash": "d202ee3096c95594933c198368f1822f"},
-    {"session": "t34.session", "api_id": 3833563,  "api_hash": "6fc316958ff24ccdc0006ce455daa0c6"},
+    {"session": "t26.session", "api_id": 24364568, "api_hash": "49549ab1ed8872ebf945c9be1ed9cf6d"},
+    {"session": "t27.session", "api_id": 27444429, "api_hash": "f055109f97ecac42e24017d2b5810f33"},
+    {"session": "t28.session", "api_id": 27731245, "api_hash": "cad2f72d1c0d1b6e90ec90d339bda5e6"},
+    {"session": "t29.session", "api_id": 3116753,  "api_hash": "d202ee3096c95594933c198368f1822f"},
+    {"session": "t30.session", "api_id": 22324699, "api_hash": "65fdfbab09e238d65bc84b66d15f5a1d"},
+    {"session": "t31.session", "api_id": 27709064, "api_hash": "20d611e4bae044da8b796f494d680f26"},
+    {"session": "t32.session", "api_id": 3366952,  "api_hash": "6987311f94c86e0e6cdf52ca5c924f1a"},
+    {"session": "t33.session", "api_id": 29356922, "api_hash": "dd1bbca313b4cc59e1f12be10068e0c6"},
+    {"session": "t34.session", "api_id": 28954312, "api_hash": "5779767c588d4e43dad89ff99b87109d"},
     {"session": "t35.session", "api_id": 3504778,  "api_hash": "db622c4b3f354d6474597fe194ce7a91"},
-    {"session": "t36.session", "api_id": 3195551,  "api_hash": "340e245fcca681d5696c6bb253cf0dcd"},
+    {"session": "t36.session", "api_id": 22294480, "api_hash": "d673762d798c56948372abbeb32843d3"},
+    {"session": "t37.session", "api_id": 4565506,  "api_hash": "2c25ee573527aa2f7f43fa1a32d2f074"},
+    {"session": "t38.session", "api_id": 20158764, "api_hash": "66ba8a8baee954716c15d0991f0fedf1"},
+    {"session": "t39.session", "api_id": 3195551,  "api_hash": "340e245fcca681d5696c6bb253cf0dcd"},
+    {"session": "t40.session", "api_id": 24242797, "api_hash": "39c5cf71d815d5ec0b07f3291671b863"},
+    {"session": "t41.session", "api_id": 3833563,  "api_hash": "6fc316958ff24ccdc0006ce455daa0c6"},
+    {"session": "t42.session", "api_id": 24364568, "api_hash": "49549ab1ed8872ebf945c9be1ed9cf6d"},
+    {"session": "t43.session", "api_id": 27709064, "api_hash": "20d611e4bae044da8b796f494d680f26"},
+    {"session": "t44.session", "api_id": 4565506,  "api_hash": "2c25ee573527aa2f7f43fa1a32d2f074"},
+    {"session": "t45.session", "api_id": 27444429, "api_hash": "f055109f97ecac42e24017d2b5810f33"},
+    {"session": "t46.session", "api_id": 24364568, "api_hash": "49549ab1ed8872ebf945c9be1ed9cf6d"},
+    {"session": "t47.session", "api_id": 22324699, "api_hash": "65fdfbab09e238d65bc84b66d15f5a1d"},
+    {"session": "t48.session", "api_id": 22294480, "api_hash": "d673762d798c56948372abbeb32843d3"},
+    {"session": "t49.session", "api_id": 28954312, "api_hash": "5779767c588d4e43dad89ff99b87109d"},
+    {"session": "t50.session", "api_id": 27709064, "api_hash": "20d611e4bae044da8b796f494d680f26"}
 ]
 ADMIN_IDS = [7175947484]
 
@@ -91,7 +105,7 @@ async def create_client(session_file, api_id, api_hash):
             if (event.message.date.replace(tzinfo=None) - datetime.utcnow()).total_seconds() < -300:
                 return
 
-            await asyncio.sleep(random.randint(2, 60))
+            await asyncio.sleep(random.randint(2, 100))
             peer = await event.get_input_chat()
             emoji = random.choice(REACTION_EMOJIS)
             await client(SendReactionRequest(
