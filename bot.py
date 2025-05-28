@@ -25,33 +25,17 @@ REACTION_EMOJIS = [
 ]
 
 ACCOUNTS = [
-    {"session": "t1.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-    {"session": "t2.session", "api_id": 24403499, "api_hash": "7f58376338498165c2c712300a3fa9b9"},
-    {"session": "t3.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-    {"session": "t4.session", "api_id": 24403499, "api_hash": "7f58376338498165c2c712300a3fa9b9"},
-    {"session": "t5.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-{"session": "t6.session", "api_id": 5269790, "api_hash": "672798adfbaba6d3a39bd655e781414a"},
-    {"session": "t7.session", "api_id": 5269790, "api_hash": "672798adfbaba6d3a39bd655e781414a"},
-    {"session": "t8.session", "api_id": 29361283, "api_hash": "64320b22d955e413c2d86e2a6d15ab31"},
-  {"session": "t9.session", "api_id": 24575253, "api_hash": "e0b2960a618c89ce6eda997ff8976382"},
-
-{"session": "t10.session", "api_id": 24403499, "api_hash": "7f58376338498165c2c712300a3fa9b9"},
- {"session": "t11.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-    {"session": "t12.session", "api_id": 24403499, "api_hash": "7f58376338498165c2c712300a3fa9b9"},
-    {"session": "t13.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-    {"session": "t14.session", "api_id": 24403499, "api_hash": "7f58376338498165c2c712300a3fa9b9"},
-    {"session": "t15.session", "api_id": 25205178, "api_hash": "9b363da33d28d0e136cc4e4a140eaaef"},
-{"session": "t16.session", "api_id": 5269790, "api_hash": "672798adfbaba6d3a39bd655e781414a"},
-    {"session": "t17.session", "api_id": 5269790, "api_hash": "672798adfbaba6d3a39bd655e781414a"},
-    {"session": "t18.session", "api_id": 29361283, "api_hash": "64320b22d955e413c2d86e2a6d15ab31"},
-  {"session": "t19.session", "api_id": 24575253, "api_hash": "e0b2960a618c89ce6eda997ff8976382"},
- {"session": "t20.session", "api_id": 26112879, "api_hash": "75583b9537ab1e1016c96e79ff822142"},
-    {"session": "t21.session", "api_id": 22747517, "api_hash": "f2f8c7759124a4db306c8bad63ffe576"},
-    {"session": "t22.session", "api_id": 26206909, "api_hash": "d61f271776edae5a1261edf4d3fb775f"},
-    {"session": "t23.session", "api_id": 26112879, "api_hash": "75583b9537ab1e1016c96e79ff822142"},
-    {"session": "t24.session", "api_id": 24820626, "api_hash": "3659d694699b512548bba42e3017e7a5"},
-    {"session": "t25.session", "api_id": 22747517, "api_hash": "f2f8c7759124a4db306c8bad63ffe576"},
-
+    {"session": "t26.session", "api_id": 24242797, "api_hash": "39c5cf71d815d5ec0b07f3291671b863"},
+    {"session": "t27.session", "api_id": 27731245, "api_hash": "cad2f72d1c0d1b6e90ec90d339bda5e6"},
+    {"session": "t28.session", "api_id": 20158764, "api_hash": "66ba8a8baee954716c15d0991f0fedf1"},
+    {"session": "t29.session", "api_id": 4565506,  "api_hash": "2c25ee573527aa2f7f43fa1a32d2f074"},
+    {"session": "t30.session", "api_id": 29356922, "api_hash": "dd1bbca313b4cc59e1f12be10068e0c6"},
+    {"session": "t31.session", "api_id": 3366952,  "api_hash": "6987311f94c86e0e6cdf52ca5c924f1a"},
+    {"session": "t32.session", "api_id": 27444429, "api_hash": "f055109f97ecac42e24017d2b5810f33"},
+    {"session": "t33.session", "api_id": 3116753,  "api_hash": "d202ee3096c95594933c198368f1822f"},
+    {"session": "t34.session", "api_id": 3833563,  "api_hash": "6fc316958ff24ccdc0006ce455daa0c6"},
+    {"session": "t35.session", "api_id": 3504778,  "api_hash": "db622c4b3f354d6474597fe194ce7a91"},
+    {"session": "t36.session", "api_id": 3195551,  "api_hash": "340e245fcca681d5696c6bb253cf0dcd"},
 ]
 ADMIN_IDS = [7175947484]
 
