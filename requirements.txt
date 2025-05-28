@@ -1,6 +1,1 @@
-FROM python:3.9-slim
-WORKDIR /app
-COPY . .
-RUN pip install -r requirements.txt
-EXPOSE 8000
-CMD ["python", "bot.py"]
+telethon==1.28.5
