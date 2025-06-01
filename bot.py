@@ -21,7 +21,7 @@ from telethon.errors import (
 
 REACTION_EMOJIS = [
     '🎉', '😍', '❤️', '🔥',
-    '🍾', '🗿', '👍', '👀', '🏆'
+    '🍾', '👍', '🏆'
 ]
 
 ACCOUNTS = [
