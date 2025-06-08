@@ -262,7 +262,7 @@ async def create_client(session_file, api_id, api_hash):
     async def handler(event):
         await message_queue.put(event)
 
-     @client.on(events.NewMessage(pattern=r'^/join (.+?)(?:\s+([\w\s,]+))?$'))
+        @client.on(events.NewMessage(pattern=r'^/join (.+?)(?:\s+([\w\s,]+))?$'))
     async def join_handler(event):
         sender = await event.get_sender()
         if sender.id not in ADMIN_IDS:
