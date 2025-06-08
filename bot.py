@@ -180,7 +180,7 @@ async def check_missing_reactions():
                     
                     for session_name in missing_sessions:
                         client = next((c for c in clients 
-                                      if c.session.filename.replace('.session', '') == session_name), None)
+                                    if c.session.filename.replace('.session', '') == session_name), None)
                         
                         if client:
                             try:
@@ -195,16 +195,16 @@ async def check_missing_reactions():
                                     update_reaction_tracker(item["chat_id"], item["msg_id"], session_name)
                                     print(f"➕ Added missing reaction from {session_name}")
                                 
-                                await asyncio.sleep(random.randint(5, 15))
+                                await asyncio.sleep(random.randint(5, 15))  # THIS WAS THE PROBLEM LINE
                                 
                             except Exception as e:
                                 print(f"❌ Failed to add missing reaction from {session_name}: {e}")
             
-            await asyncio.sleep(1800)
+            await asyncio.sleep(1800)  # Check every 30 minutes
             
         except Exception as e:
             print(f"❌ Error in missing reaction checker: {e}")
-            await asyncio.sleep(300))
+            await asyncio.sleep(300)  # Wait 5 minutes before retrying after error
 
 async def react_to_message(event):
     try:
