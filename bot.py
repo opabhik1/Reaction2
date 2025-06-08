@@ -2,8 +2,6 @@ import random
 import asyncio
 import threading
 import re
-import time
-from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telethon import TelegramClient, events
 from telethon.tl.functions.messages import (
@@ -22,9 +20,14 @@ from telethon.errors import (
     FloodWaitError
 )
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# Configuration
+# MongoDB Configuration
+MONGO_URI = "mongodb+srv://opabhik2:opabhik2@cluster0.8t59c.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+DB_NAME = "telegram_bot"
+COLLECTION_NAME = "reaction_tracker"
+
+# Telegram Configuration
 ALLOWED_CHANNELS = [
     -1002384076132,
     -1002351702866,
@@ -67,15 +70,9 @@ ACCOUNTS = [
     {"session": "t49.session", "api_id": 28954312, "api_hash": "5779767c588d4e43dad89ff99b87109d"},
     {"session": "t50.session", "api_id": 27709064, "api_hash": "20d611e4bae044da8b796f494d680f26"}
 ]
-
 ADMIN_IDS = [7175947484]
-MONGO_URI = "mongodb+srv://opabhik2:opabhik2@cluster0.8t59c.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-clients = []
 
-# MongoDB setup
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["telegram_bot"]
-reactions_collection = db["reactions"]
+clients = []
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -89,54 +86,39 @@ def start_dummy_server():
     server.serve_forever()
 
 # MongoDB Functions
+def get_mongo_collection():
+    client = MongoClient(MONGO_URI)
+    db = client[DB_NAME]
+    return db[COLLECTION_NAME]
+
 async def update_reaction_tracker(chat_id, msg_id, session_name):
-    try:
-        key = f"{chat_id}_{msg_id}"
-        current_time = datetime.utcnow()
-        
-        reaction_data = {
-            "chat_id": chat_id,
-            "msg_id": msg_id,
-            "timestamp": current_time,
-            "sessions": [session_name]
-        }
-        
-        result = reactions_collection.update_one(
-            {"_id": key},
-            {
-                "$setOnInsert": reaction_data,
-                "$addToSet": {"sessions": session_name},
-                "$set": {"timestamp": current_time}
+    collection = get_mongo_collection()
+    key = f"{chat_id}_{msg_id}"
+    
+    update_result = collection.update_one(
+        {"_id": key},
+        {
+            "$setOnInsert": {
+                "chat_id": chat_id,
+                "msg_id": msg_id,
+                "timestamp": datetime.utcnow()
             },
-            upsert=True
-        )
-        
-        return result.modified_count or result.upserted_id is not None
-    except Exception as e:
-        print(f"❌ MongoDB update error: {e}")
-        return False
+            "$addToSet": {"sessions": session_name}
+        },
+        upsert=True
+    )
+    return update_result.modified_count or update_result.upserted_id
 
-async def get_missing_sessions(chat_id, msg_id, active_sessions):
-    try:
-        key = f"{chat_id}_{msg_id}"
-        doc = reactions_collection.find_one({"_id": key})
-        
-        if not doc:
-            return active_sessions
-        
-        existing_sessions = set(doc.get("sessions", []))
-        return set(active_sessions) - existing_sessions
-    except Exception as e:
-        print(f"❌ MongoDB query error: {e}")
-        return set()
-
-async def clean_old_reactions():
-    try:
-        one_day_ago = datetime.utcnow() - timedelta(days=1)
-        result = reactions_collection.delete_many({"timestamp": {"$lt": one_day_ago}})
-        print(f"🧹 Cleaned {result.deleted_count} old reactions")
-    except Exception as e:
-        print(f"❌ Error cleaning old reactions: {e}")
+async def get_missing_sessions(chat_id, msg_id):
+    collection = get_mongo_collection()
+    key = f"{chat_id}_{msg_id}"
+    
+    record = collection.find_one({"_id": key})
+    if not record:
+        return []
+    
+    active_sessions = [c.session.filename.replace('.session', '') for c in clients]
+    return list(set(active_sessions) - set(record.get("sessions", [])))
 
 async def join_channel_from_link(client, link):
     try:
@@ -187,21 +169,18 @@ async def safe_send_reaction(client, peer, msg_id, emoji):
 async def check_missing_reactions():
     while True:
         try:
-            active_sessions = [c.session.filename.replace('.session', '') for c in clients]
-            one_day_ago = datetime.utcnow() - timedelta(days=1)
+            collection = get_mongo_collection()
+            time_threshold = datetime.utcnow() - timedelta(hours=24)
             
-            cursor = reactions_collection.find({
-                "timestamp": {"$gt": one_day_ago}
+            records = collection.find({
+                "timestamp": {"$gte": time_threshold}
             })
             
-            for doc in cursor:
-                chat_id = doc["chat_id"]
-                msg_id = doc["msg_id"]
-                
-                missing_sessions = await get_missing_sessions(chat_id, msg_id, active_sessions)
+            for record in records:
+                missing_sessions = await get_missing_sessions(record["chat_id"], record["msg_id"])
                 
                 if missing_sessions:
-                    print(f"🔍 Found {len(missing_sessions)} missing reactions for {chat_id}/{msg_id}")
+                    print(f"🔍 Found {len(missing_sessions)} missing reactions for {record['_id']}")
                     
                     for session_name in missing_sessions:
                         client = next((c for c in clients 
@@ -209,15 +188,19 @@ async def check_missing_reactions():
                         
                         if client:
                             try:
-                                peer = await client.get_input_entity(chat_id)
+                                peer = await client.get_input_entity(record["chat_id"])
                                 emoji = random.choice(REACTION_EMOJIS)
                                 
                                 success = await safe_send_reaction(
-                                    client, peer, msg_id, emoji
+                                    client, peer, record["msg_id"], emoji
                                 )
                                 
                                 if success:
-                                    await update_reaction_tracker(chat_id, msg_id, session_name)
+                                    await update_reaction_tracker(
+                                        record["chat_id"], 
+                                        record["msg_id"], 
+                                        session_name
+                                    )
                                     print(f"➕ Added missing reaction from {session_name}")
                                 
                                 await asyncio.sleep(random.randint(5, 15))
@@ -225,7 +208,6 @@ async def check_missing_reactions():
                             except Exception as e:
                                 print(f"❌ Failed to add missing reaction from {session_name}: {e}")
             
-            await clean_old_reactions()
             await asyncio.sleep(1800)  # Check every 30 minutes
             
         except Exception as e:
@@ -241,14 +223,8 @@ async def react_to_message(event):
         msg_id = event.message.id
         session_name = client.session.filename.replace('.session', '')
         
-        # Check if already reacted in MongoDB
-        key = f"{chat_id}_{msg_id}"
-        doc = reactions_collection.find_one({
-            "_id": key,
-            "sessions": session_name
-        })
-        
-        if doc:
+        missing_sessions = await get_missing_sessions(chat_id, msg_id)
+        if session_name not in missing_sessions:
             return
         
         await asyncio.sleep(random.randint(1, 30))
@@ -307,7 +283,7 @@ async def create_client(session_file, api_id, api_hash):
             session_names = [s.strip() for s in sessions_input.split(',')]
             target_clients = [
                 c for c in clients 
-                if any(c.session.filename.replace('.session', '') == name for name in session_names)
+                if any(c.session.filename.replace('.session', '') in name for name in session_names)
             ]
             if not target_clients:
                 await event.reply("❌ No matching sessions found!")
@@ -414,7 +390,7 @@ async def main():
     
     asyncio.create_task(check_missing_reactions())
     
-    print("🤖 BOT STARTED WITH MONGODB REACTION TRACKING!")
+    print("🤖 BOT STARTED WITH MONGODB TRACKING!")
     await asyncio.gather(*[client.run_until_disconnected() for client in clients])
 
 if __name__ == "__main__":
