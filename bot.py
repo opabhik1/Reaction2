@@ -16,21 +16,13 @@ from telethon.errors import (
     InviteHashExpiredError,
     InviteRequestSentError,
     ChannelPrivateError,
-    UsernameNotOccupiedError,
-    FloodWaitError
+    UsernameNotOccupiedError
 )
-from pymongo import MongoClient
-from datetime import datetime, timedelta
 
-# MongoDB Configuration
-MONGO_URI = "mongodb+srv://opabhik1:opabhik1@cluster0.8t59c.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-DB_NAME = "telegram_bot"
-COLLECTION_NAME = "reaction_tracker"
-
-# Telegram Configuration
+# Allowed channels list
 ALLOWED_CHANNELS = [
     -1002384076132,
-    -1002351702866,
+-1002351702866,
     -1002277213847,
     -1002089720900,
     -1002681191277,
@@ -72,8 +64,6 @@ ACCOUNTS = [
 ]
 ADMIN_IDS = [7175947484]
 
-clients = []
-
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -84,41 +74,6 @@ def start_dummy_server():
     server = HTTPServer(("0.0.0.0", 8000), HealthCheckHandler)
     print("🩺 Health check server running on port 8000")
     server.serve_forever()
-
-# MongoDB Functions
-def get_mongo_collection():
-    client = MongoClient(MONGO_URI)
-    db = client[DB_NAME]
-    return db[COLLECTION_NAME]
-
-async def update_reaction_tracker(chat_id, msg_id, session_name):
-    collection = get_mongo_collection()
-    key = f"{chat_id}_{msg_id}"
-    
-    update_result = collection.update_one(
-        {"_id": key},
-        {
-            "$setOnInsert": {
-                "chat_id": chat_id,
-                "msg_id": msg_id,
-                "timestamp": datetime.utcnow()
-            },
-            "$addToSet": {"sessions": session_name}
-        },
-        upsert=True
-    )
-    return update_result.modified_count or update_result.upserted_id
-
-async def get_missing_sessions(chat_id, msg_id):
-    collection = get_mongo_collection()
-    key = f"{chat_id}_{msg_id}"
-    
-    record = collection.find_one({"_id": key})
-    if not record:
-        return []
-    
-    active_sessions = [c.session.filename.replace('.session', '') for c in clients]
-    return list(set(active_sessions) - set(record.get("sessions", [])))
 
 async def join_channel_from_link(client, link):
     try:
@@ -150,111 +105,48 @@ async def leave_channel(client, channel_id):
     except Exception as e:
         return False, str(e)
 
-async def safe_send_reaction(client, peer, msg_id, emoji):
-    try:
-        await client(SendReactionRequest(
-            peer=peer,
-            msg_id=msg_id,
-            reaction=[ReactionEmoji(emoticon=emoji)]
-        ))
-        return True
-    except FloodWaitError as e:
-        print(f"⏳ Flood wait for {e.seconds} seconds")
-        await asyncio.sleep(e.seconds + 5)
-        return await safe_send_reaction(client, peer, msg_id, emoji)
-    except Exception as e:
-        print(f"💥 Reaction failed: {e}")
-        return False
+async def create_client(session_file, api_id, api_hash):
+    client = TelegramClient(session_file, api_id, api_hash)
+    message_queue = asyncio.Queue()
 
-async def check_missing_reactions():
-    while True:
+    async def react_to_message(event):
         try:
-            collection = get_mongo_collection()
-            time_threshold = datetime.utcnow() - timedelta(hours=24)
-            
-            records = collection.find({
-                "timestamp": {"$gte": time_threshold}
-            })
-            
-            for record in records:
-                missing_sessions = await get_missing_sessions(record["chat_id"], record["msg_id"])
-                
-                if missing_sessions:
-                    print(f"🔍 Found {len(missing_sessions)} missing reactions for {record['_id']}")
-                    
-                    for session_name in missing_sessions:
-                        client = next((c for c in clients 
-                                    if c.session.filename.replace('.session', '') == session_name), None)
-                        
-                        if client:
-                            try:
-                                peer = await client.get_input_entity(record["chat_id"])
-                                emoji = random.choice(REACTION_EMOJIS)
-                                
-                                success = await safe_send_reaction(
-                                    client, peer, record["msg_id"], emoji
-                                )
-                                
-                                if success:
-                                    await update_reaction_tracker(
-                                        record["chat_id"], 
-                                        record["msg_id"], 
-                                        session_name
-                                    )
-                                    print(f"➕ Added missing reaction from {session_name}")
-                                
-                                await asyncio.sleep(random.randint(5, 15))
-                                
-                            except Exception as e:
-                                print(f"❌ Failed to add missing reaction from {session_name}: {e}")
-            
-            await asyncio.sleep(1800)  # Check every 30 minutes
-            
-        except Exception as e:
-            print(f"❌ Error in missing reaction checker: {e}")
-            await asyncio.sleep(300)  # Wait 5 minutes before retrying after error
+            # Check if message is from an allowed channel
+            chat_id = event.chat_id
+            if chat_id not in ALLOWED_CHANNELS:
+                print(f"⚠️ Ignoring message from non-allowed channel: {chat_id}")
+                return
 
-async def react_to_message(event):
-    try:
-        chat_id = event.chat_id
-        if chat_id not in ALLOWED_CHANNELS:
-            return
+            # Ignore messages older than 5 mins
+            if (event.message.date.replace(tzinfo=None) - datetime.utcnow()).total_seconds() < -300:
+                return
 
-        msg_id = event.message.id
-        session_name = client.session.filename.replace('.session', '')
-        
-        missing_sessions = await get_missing_sessions(chat_id, msg_id)
-        if session_name not in missing_sessions:
-            return
-        
-        await asyncio.sleep(random.randint(1, 30))
-        
-        peer = await event.get_input_chat()
-        emoji = random.choice(REACTION_EMOJIS)
-        
-        success = await safe_send_reaction(client, peer, msg_id, emoji)
-        
-        if success:
-            await update_reaction_tracker(chat_id, msg_id, session_name)
-            print(f"✅ {session_name} reacted to {chat_id}/{msg_id}")
+            await asyncio.sleep(random.randint(1, 30))
+            peer = await event.get_input_chat()
+            emoji = random.choice(REACTION_EMOJIS)
             
+            # Send reaction
+            await client(SendReactionRequest(
+                peer=peer,
+                msg_id=event.message.id,
+                reaction=[ReactionEmoji(emoticon=emoji)]
+            ))
+            
+            # Increase views if it's a channel
             if isinstance(event.chat, Channel):
                 try:
                     await client(GetMessagesViewsRequest(
                         peer=peer,
-                        id=[msg_id],
+                        id=[event.message.id],
                         increment=True
                     ))
-                    print(f"👁️ Viewed message {msg_id}")
+                    print(f"👁️ Viewed and ⚡ Reacted with {emoji} in allowed channel: {event.chat_id}")
                 except Exception as ve:
                     print(f"⚠️ View increase failed: {ve}")
-                    
-    except Exception as e:
-        print(f"❌ Reaction failed for {session_name}: {e}")
-
-async def create_client(session_file, api_id, api_hash):
-    client = TelegramClient(session_file, api_id, api_hash)
-    message_queue = asyncio.Queue()
+            else:
+                print(f"⚡ Reacted with {emoji} in allowed chat: {event.chat_id}")
+        except Exception as e:
+            print(f"💥 Error while reacting: {e}")
 
     async def worker():
         while True:
@@ -369,7 +261,7 @@ async def start_client_and_run(acc):
         client = await create_client(acc["session"], acc["api_id"], acc["api_hash"])
         await client.start()
         me = await client.get_me()
-        await client.send_message('me', f"✅ Restarted successfully as {me.first_name}")
+        await client.send_message('me', f"✅ Restarted successfully as {me.first_name} (ID: {me.id})")
         print(f"🚀 {acc['session']} logged in and ready!")
         return client
     except Exception as e:
@@ -379,19 +271,15 @@ async def start_client_and_run(acc):
 async def main():
     global clients
     threading.Thread(target=start_dummy_server, daemon=True).start()
-    
     tasks = [asyncio.create_task(start_client_and_run(acc)) for acc in ACCOUNTS]
     results = await asyncio.gather(*tasks)
     clients = [client for client in results if client is not None]
-    
     if not clients:
         print("⚠️ No clients were successfully logged in. Exiting.")
         return
-    
-    asyncio.create_task(check_missing_reactions())
-    
-    print("🤖 BOT STARTED WITH MONGODB TRACKING!")
+    print("🤖 BLAST MODE ACTIVATED! Reacting to messages in allowed channels only...")
     await asyncio.gather(*[client.run_until_disconnected() for client in clients])
 
 if __name__ == "__main__":
+    from datetime import datetime
     asyncio.run(main())
