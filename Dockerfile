@@ -1,6 +1,7 @@
 FROM python:3.9-slim
 WORKDIR /app
-COPY . .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-ENV PORT 8000  # Match your health check port
+COPY . .
+ENV PORT 8000
 CMD ["python", "bot.py"]
