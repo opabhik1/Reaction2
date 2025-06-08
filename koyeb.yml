@@ -1,0 +1,9 @@
+services:
+  - name: telegram-bot
+    ports:
+      - port: 8080
+        http: true
+    env:
+      - key: PORT
+        value: "8080"
+    run: python bot.py
