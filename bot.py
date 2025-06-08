@@ -105,7 +105,7 @@ async def create_client(session_file, api_id, api_hash):
             if (event.message.date.replace(tzinfo=None) - datetime.utcnow()).total_seconds() < -300:
                 return
 
-            await asyncio.sleep(random.randint(2, 100))
+            await asyncio.sleep(random.randint(1, 30))
             peer = await event.get_input_chat()
             emoji = random.choice(REACTION_EMOJIS)
             await client(SendReactionRequest(
