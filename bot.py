@@ -19,6 +19,17 @@ from telethon.errors import (
     UsernameNotOccupiedError
 )
 
+# Allowed channels list
+ALLOWED_CHANNELS = [
+    -1002384076132,
+-1002351702866,
+    -1002277213847,
+    -1002089720900,
+    -1002681191277,
+    -1002151078203,
+    -1002648138630,
+]
+
 REACTION_EMOJIS = [
     '🎉', '😍', '❤️', '🔥',
     '🍾', '👍', '🏆'
@@ -98,9 +109,14 @@ async def create_client(session_file, api_id, api_hash):
     client = TelegramClient(session_file, api_id, api_hash)
     message_queue = asyncio.Queue()
 
-
     async def react_to_message(event):
         try:
+            # Check if message is from an allowed channel
+            chat_id = event.chat_id
+            if chat_id not in ALLOWED_CHANNELS:
+                print(f"⚠️ Ignoring message from non-allowed channel: {chat_id}")
+                return
+
             # Ignore messages older than 5 mins
             if (event.message.date.replace(tzinfo=None) - datetime.utcnow()).total_seconds() < -300:
                 return
@@ -108,11 +124,15 @@ async def create_client(session_file, api_id, api_hash):
             await asyncio.sleep(random.randint(1, 30))
             peer = await event.get_input_chat()
             emoji = random.choice(REACTION_EMOJIS)
+            
+            # Send reaction
             await client(SendReactionRequest(
                 peer=peer,
                 msg_id=event.message.id,
                 reaction=[ReactionEmoji(emoticon=emoji)]
             ))
+            
+            # Increase views if it's a channel
             if isinstance(event.chat, Channel):
                 try:
                     await client(GetMessagesViewsRequest(
@@ -120,11 +140,11 @@ async def create_client(session_file, api_id, api_hash):
                         id=[event.message.id],
                         increment=True
                     ))
-                    print(f"👁️ Viewed and ⚡ Reacted with {emoji} in channel: {event.chat_id}")
+                    print(f"👁️ Viewed and ⚡ Reacted with {emoji} in allowed channel: {event.chat_id}")
                 except Exception as ve:
                     print(f"⚠️ View increase failed: {ve}")
             else:
-                print(f"⚡ Reacted with {emoji} in chat: {event.chat_id}")
+                print(f"⚡ Reacted with {emoji} in allowed chat: {event.chat_id}")
         except Exception as e:
             print(f"💥 Error while reacting: {e}")
 
@@ -257,7 +277,7 @@ async def main():
     if not clients:
         print("⚠️ No clients were successfully logged in. Exiting.")
         return
-    print("🤖 BLAST MODE ACTIVATED! Reacting instantly to all messages...")
+    print("🤖 BLAST MODE ACTIVATED! Reacting to messages in allowed channels only...")
     await asyncio.gather(*[client.run_until_disconnected() for client in clients])
 
 if __name__ == "__main__":
