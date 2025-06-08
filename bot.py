@@ -23,7 +23,7 @@ from pymongo import MongoClient
 from datetime import datetime, timedelta
 
 # MongoDB Configuration
-MONGO_URI = "mongodb+srv://opabhik2:opabhik2@cluster0.8t59c.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+MONGO_URI = "mongodb+srv://opabhik1:opabhik1@cluster0.8t59c.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 DB_NAME = "telegram_bot"
 COLLECTION_NAME = "reaction_tracker"
 
