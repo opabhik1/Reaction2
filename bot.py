@@ -2,6 +2,9 @@ import random
 import asyncio
 import threading
 import re
+import json
+import time
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telethon import TelegramClient, events
 from telethon.tl.functions.messages import (
@@ -16,13 +19,14 @@ from telethon.errors import (
     InviteHashExpiredError,
     InviteRequestSentError,
     ChannelPrivateError,
-    UsernameNotOccupiedError
+    UsernameNotOccupiedError,
+    FloodWaitError
 )
 
-# Allowed channels list
+# Configuration
 ALLOWED_CHANNELS = [
     -1002384076132,
--1002351702866,
+    -1002351702866,
     -1002277213847,
     -1002089720900,
     -1002681191277,
@@ -62,7 +66,10 @@ ACCOUNTS = [
     {"session": "t49.session", "api_id": 28954312, "api_hash": "5779767c588d4e43dad89ff99b87109d"},
     {"session": "t50.session", "api_id": 27709064, "api_hash": "20d611e4bae044da8b796f494d680f26"}
 ]
+
 ADMIN_IDS = [7175947484]
+REACTION_TRACKER_FILE = "reaction_tracker.json"
+clients = []
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -74,6 +81,40 @@ def start_dummy_server():
     server = HTTPServer(("0.0.0.0", 8000), HealthCheckHandler)
     print("🩺 Health check server running on port 8000")
     server.serve_forever()
+
+# JSON Tracking Functions
+def load_reaction_data():
+    try:
+        if Path(REACTION_TRACKER_FILE).exists():
+            with open(REACTION_TRACKER_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"❌ Error loading reaction data: {e}")
+        return {}
+
+def save_reaction_data(data):
+    try:
+        with open(REACTION_TRACKER_FILE, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"❌ Error saving reaction data: {e}")
+
+def update_reaction_tracker(chat_id, msg_id, session_name):
+    data = load_reaction_data()
+    key = f"{chat_id}_{msg_id}"
+    
+    if key not in data:
+        data[key] = {
+            "chat_id": chat_id,
+            "msg_id": msg_id,
+            "timestamp": int(time.time()),
+            "sessions": []
+        }
+    
+    if session_name not in data[key]["sessions"]:
+        data[key]["sessions"].append(session_name)
+        save_reaction_data(data)
 
 async def join_channel_from_link(client, link):
     try:
@@ -105,48 +146,108 @@ async def leave_channel(client, channel_id):
     except Exception as e:
         return False, str(e)
 
-async def create_client(session_file, api_id, api_hash):
-    client = TelegramClient(session_file, api_id, api_hash)
-    message_queue = asyncio.Queue()
+async def safe_send_reaction(client, peer, msg_id, emoji):
+    try:
+        await client(SendReactionRequest(
+            peer=peer,
+            msg_id=msg_id,
+            reaction=[ReactionEmoji(emoticon=emoji)]
+        ))
+        return True
+    except FloodWaitError as e:
+        print(f"⏳ Flood wait for {e.seconds} seconds")
+        await asyncio.sleep(e.seconds + 5)
+        return await safe_send_reaction(client, peer, msg_id, emoji)
+    except Exception as e:
+        print(f"💥 Reaction failed: {e}")
+        return False
 
-    async def react_to_message(event):
+async def check_missing_reactions():
+    while True:
         try:
-            # Check if message is from an allowed channel
-            chat_id = event.chat_id
-            if chat_id not in ALLOWED_CHANNELS:
-                print(f"⚠️ Ignoring message from non-allowed channel: {chat_id}")
-                return
-
-            # Ignore messages older than 5 mins
-            if (event.message.date.replace(tzinfo=None) - datetime.utcnow()).total_seconds() < -300:
-                return
-
-            await asyncio.sleep(random.randint(1, 30))
-            peer = await event.get_input_chat()
-            emoji = random.choice(REACTION_EMOJIS)
+            data = load_reaction_data()
+            current_time = time.time()
             
-            # Send reaction
-            await client(SendReactionRequest(
-                peer=peer,
-                msg_id=event.message.id,
-                reaction=[ReactionEmoji(emoticon=emoji)]
-            ))
+            for key, item in list(data.items()):
+                if current_time - item["timestamp"] > 86400:
+                    continue
+                
+                active_sessions = [c.session.filename.replace('.session', '') for c in clients]
+                missing_sessions = set(active_sessions) - set(item["sessions"])
+                
+                if missing_sessions:
+                    print(f"🔍 Found {len(missing_sessions)} missing reactions for {key}")
+                    
+                    for session_name in missing_sessions:
+                        client = next((c for c in clients 
+                                      if c.session.filename.replace('.session', '') == session_name), None)
+                        
+                        if client:
+                            try:
+                                peer = await client.get_input_entity(item["chat_id"])
+                                emoji = random.choice(REACTION_EMOJIS)
+                                
+                                success = await safe_send_reaction(
+                                    client, peer, item["msg_id"], emoji
+                                )
+                                
+                                if success:
+                                    update_reaction_tracker(item["chat_id"], item["msg_id"], session_name)
+                                    print(f"➕ Added missing reaction from {session_name}")
+                                
+                                await asyncio.sleep(random.randint(5, 15))
+                                
+                            except Exception as e:
+                                print(f"❌ Failed to add missing reaction from {session_name}: {e}")
             
-            # Increase views if it's a channel
+            await asyncio.sleep(1800)
+            
+        except Exception as e:
+            print(f"❌ Error in missing reaction checker: {e}")
+            await asyncio.sleep(300))
+
+async def react_to_message(event):
+    try:
+        chat_id = event.chat_id
+        if chat_id not in ALLOWED_CHANNELS:
+            return
+
+        msg_id = event.message.id
+        session_name = client.session.filename.replace('.session', '')
+        
+        data = load_reaction_data()
+        key = f"{chat_id}_{msg_id}"
+        if key in data and session_name in data[key]["sessions"]:
+            return
+        
+        await asyncio.sleep(random.randint(1, 30))
+        
+        peer = await event.get_input_chat()
+        emoji = random.choice(REACTION_EMOJIS)
+        
+        success = await safe_send_reaction(client, peer, msg_id, emoji)
+        
+        if success:
+            update_reaction_tracker(chat_id, msg_id, session_name)
+            print(f"✅ {session_name} reacted to {chat_id}/{msg_id}")
+            
             if isinstance(event.chat, Channel):
                 try:
                     await client(GetMessagesViewsRequest(
                         peer=peer,
-                        id=[event.message.id],
+                        id=[msg_id],
                         increment=True
                     ))
-                    print(f"👁️ Viewed and ⚡ Reacted with {emoji} in allowed channel: {event.chat_id}")
+                    print(f"👁️ Viewed message {msg_id}")
                 except Exception as ve:
                     print(f"⚠️ View increase failed: {ve}")
-            else:
-                print(f"⚡ Reacted with {emoji} in allowed chat: {event.chat_id}")
-        except Exception as e:
-            print(f"💥 Error while reacting: {e}")
+                    
+    except Exception as e:
+        print(f"❌ Reaction failed for {session_name}: {e}")
+
+async def create_client(session_file, api_id, api_hash):
+    client = TelegramClient(session_file, api_id, api_hash)
+    message_queue = asyncio.Queue()
 
     async def worker():
         while True:
@@ -161,7 +262,7 @@ async def create_client(session_file, api_id, api_hash):
     async def handler(event):
         await message_queue.put(event)
 
-    @client.on(events.NewMessage(pattern=r'^/join (.+?)(?:\s+([\w\s,]+))?$'))
+     @client.on(events.NewMessage(pattern=r'^/join (.+?)(?:\s+([\w\s,]+))?$'))
     async def join_handler(event):
         sender = await event.get_sender()
         if sender.id not in ADMIN_IDS:
@@ -261,7 +362,7 @@ async def start_client_and_run(acc):
         client = await create_client(acc["session"], acc["api_id"], acc["api_hash"])
         await client.start()
         me = await client.get_me()
-        await client.send_message('me', f"✅ Restarted successfully as {me.first_name} (ID: {me.id})")
+        await client.send_message('me', f"✅ Restarted successfully as {me.first_name}")
         print(f"🚀 {acc['session']} logged in and ready!")
         return client
     except Exception as e:
@@ -271,13 +372,18 @@ async def start_client_and_run(acc):
 async def main():
     global clients
     threading.Thread(target=start_dummy_server, daemon=True).start()
+    
     tasks = [asyncio.create_task(start_client_and_run(acc)) for acc in ACCOUNTS]
     results = await asyncio.gather(*tasks)
     clients = [client for client in results if client is not None]
+    
     if not clients:
         print("⚠️ No clients were successfully logged in. Exiting.")
         return
-    print("🤖 BLAST MODE ACTIVATED! Reacting to messages in allowed channels only...")
+    
+    asyncio.create_task(check_missing_reactions())
+    
+    print("🤖 BOT STARTED WITH REACTION TRACKING!")
     await asyncio.gather(*[client.run_until_disconnected() for client in clients])
 
 if __name__ == "__main__":
