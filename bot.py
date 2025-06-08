@@ -262,76 +262,7 @@ async def create_client(session_file, api_id, api_hash):
     async def handler(event):
         await message_queue.put(event)
 
-        @client.on(events.NewMessage(pattern=r'^/join (.+?)(?:\s+([\w\s,]+))?$'))
-    async def join_handler(event):
-        sender = await event.get_sender()
-        if sender.id not in ADMIN_IDS:
-            return
-
-        link = event.pattern_match.group(1).strip()
-        sessions_input = event.pattern_match.group(2)
-        
-        target_clients = clients
-        if sessions_input:
-            session_names = [s.strip() for s in sessions_input.split(',')]
-            target_clients = [
-                c for c in clients 
-                if any(c.session.filename.replace('.session', '') in name for name in session_names)
-            ]
-            if not target_clients:
-                await event.reply("❌ No matching sessions found!")
-                return
-
-        msg = await event.reply(f"⏳ Processing join request for {len(target_clients)} accounts...")
-
-        joined = 0
-        failed = 0
-        details = []
-
-        for c in target_clients:
-            try:
-                delay = random.randint(1, 120)
-                print(f"⏱️ Waiting {delay}s before joining with {await c.get_me()}")
-                await asyncio.sleep(delay)
-
-                success, err = await join_channel_from_link(c, link)
-                if success:
-                    joined += 1
-                    details.append(f"✅ {c.session.filename}: Success")
-                else:
-                    failed += 1
-                    details.append(f"❌ {c.session.filename}: {err}")
-                    print(f"{await c.get_me()}: failed - {err}")
-
-                await msg.edit(
-                    f"⏳ Joining...\n"
-                    f"✅ Joined: {joined}\n"
-                    f"❌ Failed: {failed}\n\n"
-                    f"Last update: {c.session.filename}"
-                )
-            except Exception as e:
-                failed += 1
-                details.append(f"❌ {c.session.filename}: Error - {str(e)}")
-                await msg.edit(
-                    f"⏳ Joining...\n"
-                    f"✅ Joined: {joined}\n"
-                    f"❌ Failed: {failed}\n\n"
-                    f"Last error: {str(e)}"
-                )
-
-        report = (
-            f"✅ Join process completed!\n\n"
-            f"📊 Stats:\n"
-            f"✅ Joined: {joined}\n"
-            f"❌ Failed: {failed}\n\n"
-            f"🔍 Details:\n"
-        )
-        detail_chunks = [details[i:i+10] for i in range(0, len(details), 10)]
-        
-        await msg.edit(report + "\n".join(detail_chunks[0]))
-        for chunk in detail_chunks[1:]:
-            await event.reply("\n".join(chunk))
-
+       
     @client.on(events.NewMessage(pattern=r'^/leave (-?\d+)'))
     async def leave_handler(event):
         sender = await event.get_sender()
