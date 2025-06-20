@@ -22,6 +22,9 @@ from telethon.errors import (
 # Allowed channels list
 ALLOWED_CHANNELS = [
     -1002384076132,
+    -1001739880237,
+    -1002482648816,
+    -1002813557041,
 -1002351702866,
 -1002464855998,
 -1002526136224,
