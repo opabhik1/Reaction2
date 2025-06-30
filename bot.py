@@ -24,7 +24,7 @@ ALLOWED_CHANNELS = [
 -1002379431740, #@ISHIKAKAUR777 29 june
      -1002648138630, #sp trader 29 june
  -1002384076132, # test
-    -1001657929029 # 30.june aryan
+    -1001657929029, # 30.june aryan
     -1001739880237, # 20 june
     -1002482648816, # 100 views own
     -1002404556710, # bhawna 21 june
