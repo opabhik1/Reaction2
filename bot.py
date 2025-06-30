@@ -21,25 +21,23 @@ from telethon.errors import (
 
 # Allowed channels list
 ALLOWED_CHANNELS = [
--1002379431740, #@ISHIKAKAUR777 29 june
-     -1002648138630, #sp trader 29 june
- -1002384076132, # test
-    -1001657929029, # 30.june aryan
-    -1001739880237, # 20 june
-    -1002482648816, # 100 views own
-    -1002404556710, # bhawna 21 june
-    -1002343690606, # avitar walllah 24 june
--1002351702866, #biya 8 june
--1002464855998, # @Shumaila57 9 june
--1002526136224, # biya 13 june
--1002784634586, # biya 13 june
-    -1001954466164, # 10 june
-    -1001711894456, #bang japs 24 may { 2 month }
-    -1002277213847, # max op 28 june
-  
--1002417488873, #50 views own
+    -1002379431740,  # @ISHIKAKAUR777 - 29 June
+    -1002648138630,  # SP Trader - 29 June
+    -1002384076132,  # Test
+    -1001657929029,  # Aryan - 30 June
+    -1001739880237,  # 20 June
+    -1002482648816,  # 100 views own
+    -1002404556710,  # Bhawna - 21 June
+    -1002343690606,  # Avitar Wallah - 24 June
+    -1002351702866,  # Biya - 8 June
+    -1002464855998,  # @Shumaila57 - 9 June
+    -1002526136224,  # Biya - 13 June
+    -1002784634586,  # Biya - 13 June
+    -1001954466164,  # 10 June
+    -1001711894456,  # Bang Japs - 24 May (2 months)
+    -1002277213847,  # Max OP - 28 June
+    -1002417488873,  # 50 views own
 ]
-
 REACTION_EMOJIS = [
     '🎉', '😍', '❤️', '🔥',
     '🍾', '👍', '🏆'
