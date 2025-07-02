@@ -26,6 +26,7 @@ ALLOWED_CHANNELS = [
     -1002384076132,  # Test
     -1001657929029,  # Aryan - 30 June
     -1001739880237,  # 20 June
+    -1002562734240, # @AdBezOfficial9 2 july
     -1002482648816,  # 100 views own
     -1002404556710,  # Bhawna - 21 June
     -1002343690606,  # Avitar Wallah - 24 June
