@@ -35,6 +35,8 @@ ALLOWED_CHANNELS = [
     -1002526136224,  # Biya - 13 June
     -1002784634586,  # Biya - 13 June
     -1001954466164,  # 10 June
+    -1002062808408, # somes brand 3 jul
+    -1002089720900, # """ somes 3 jul
     -1001711894456,  # Bang Japs - 24 May (2 months)
     -1002277213847,  # Max OP - 28 June
     -1002417488873,  # 50 views own
